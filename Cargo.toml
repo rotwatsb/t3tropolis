@@ -1,0 +1,11 @@
+[package]
+name = "t3tropolis"
+version = "0.1.0"
+authors = ["Steve Bradley <stevebradley@gmail.com>"]
+
+[dependencies]
+nalgebra = "0.8.*"
+glfw = "0.2.*"
+
+[dependencies.kiss3d]
+git = "https://github.com/sebcrozet/kiss3d"
