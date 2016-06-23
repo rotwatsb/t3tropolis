@@ -3,7 +3,7 @@ extern crate nalgebra;
 extern crate glfw;
 extern crate rand;
 
-use std::time::{SystemTime};
+use std::time::{ Duration, SystemTime };
 
 use nalgebra::{ Vector3, Rotation3, Isometry3, Point3 };
 
@@ -252,7 +252,7 @@ impl Game {
             tetromino: (IShape, 0),
             temp: [[0; 4]; 4],
             next_tetromino: (IShape, 0),
-            tetro_pos: (19, 5),
+            tetro_pos: (19, 4),
         };
         g
     }
@@ -284,7 +284,7 @@ impl Game {
     fn rotate_tetromino(&mut self) {
         self.tetromino.1 = (self.tetromino.1 + 1) % 4;
         if self.collision(0,0) {
-            self.tetromino.1 = (self.tetromino.1 - 1) % 4;
+            self.tetromino.1 = (self.tetromino.1 + 3) % 4;
         }
     }
 
@@ -294,10 +294,40 @@ impl Game {
 	if self.collision(0,0) {
 	    self.tetro_pos.0 += 1;
 	    self.tetro_to_board();
-	    //self.clear_lines();
-	    self.tetro_pos = (19, 5);
+	    self.clear_lines();
+	    self.tetro_pos = (19, 4);
  	    self.new_tetromino();
 	}
+    }
+
+    fn drop(&mut self) {
+        while !self.collision(-1, 0) {//&& self.tetro_pos.0 > 0 {
+            self.tetro_pos.0 -= 1;
+        }
+    }
+
+    fn clear_lines(&mut self) {
+        let mut clear_line = true;
+        for mut i in 0..22 {
+	    clear_line = true;
+	    for j in 0..10 {
+	        if self.board[22 - i - 1][j] == Cell::E {
+		    clear_line = false;
+		    break;
+	        }
+            }
+	    if clear_line {
+	    	self.delete_line(22 - i - 1);
+	    }
+        }
+    }
+
+    fn delete_line(&mut self, line: usize) {
+        for i in line..(22 - 1) {
+	    for j in 0..10 {
+	        self.board[i][j] = self.board[i + 1][j];
+	    }
+        }
     }
 
     fn move_right(&mut self) {
@@ -331,7 +361,7 @@ impl Game {
         }
     }
 
-    fn collision(&mut self, dc: i8, dr: i8) -> bool {
+    fn collision(&mut self, dr: i8, dc: i8) -> bool {
         let nr = self.tetro_pos.0 + dr;
         let nc = self.tetro_pos.1 + dc;
 
@@ -439,7 +469,7 @@ fn main() {
     
     window.set_light(Light::StickToCamera);
 
-    let mut t = SystemTime::now();
+    let mut t1 = SystemTime::now();
 
     while window.render() {
 
@@ -460,6 +490,8 @@ fn main() {
                             game.move_left(),
                         Key::D | Key::Right =>
                             game.move_right(),
+                        Key::Space =>
+                            game.drop(),
                         _ => (),
                     }
 
@@ -468,7 +500,12 @@ fn main() {
                 _ => (),
             }
         }
-         
+        if let Ok(d) = SystemTime::now().duration_since(t1) {
+            if d.as_secs() > 0.5 as u64 {
+                game.move_down();
+                t1 = SystemTime::now();
+            }
+        }
     }
 }
 
