@@ -2,19 +2,22 @@ extern crate kiss3d;
 extern crate nalgebra;
 extern crate glfw;
 extern crate rand;
+extern crate num;
 
 use std::time::{ Duration, SystemTime };
 
-use nalgebra::{ Vector3, Rotation3, Isometry3, Point3 };
+use nalgebra::{ Vector3, Rotation, Isometry3, Point3 };
 
 use kiss3d::window::Window;
 use kiss3d::light::Light;
 use kiss3d::scene::SceneNode;
+use kiss3d::camera::{ Camera, FirstPerson };
 
 use glfw::{Action, WindowEvent, Key};
 
 use rand::{OsRng, Rng};
 
+use num::traits::One;
 
 type Color = (f32, f32, f32);
 
@@ -230,11 +233,11 @@ const ZShape: Shape = [
 
 struct Game {
     board: [[Cell; 10]; 22],
+    orientation: Isometry3<f32>,
     board_grp: SceneNode,
     tetromino_grp: SceneNode,
     rng: OsRng,
     tetromino: (Shape, usize),
-    temp: [[u8; 4]; 4],
     next_tetromino: (Shape, usize),
     tetro_pos: (i8, i8),
 }
@@ -246,11 +249,11 @@ impl Game {
         let mut tg = bg.add_group();
         let mut g = Game {
             board: [[Cell::E; 10]; 22],
+            orientation: Isometry3::one(),
             board_grp: bg,
             tetromino_grp: tg,
             rng: OsRng::new().unwrap(),
             tetromino: (IShape, 0),
-            temp: [[0; 4]; 4],
             next_tetromino: (IShape, 0),
             tetro_pos: (19, 4),
         };
@@ -365,11 +368,9 @@ impl Game {
         let nr = self.tetro_pos.0 + dr;
         let nc = self.tetro_pos.1 + dc;
 
-        println!("nr: {} nc: {}", nr, nc);
-        for i in 0..4 {
+         for i in 0..4 {
 	    for j in 0..4 {
-                println!("{} {}", i as i8 + nr, j as i8 + nc);
-	        if self.tetromino.0[self.tetromino.1][i][j] != 0 {
+ 	        if self.tetromino.0[self.tetromino.1][i][j] != 0 {
 		    if (i as i8 + nr) < 22 && (i as i8 + nr) >= 0 &&
                         (j as i8 + nc) < 10 && (j as i8 + nc) >= 0 {
 		            if self.board[(i as i8 + nr) as usize]
@@ -392,6 +393,7 @@ impl Game {
         self.board_grp = window.add_group();
         self.tetromino_grp = self.board_grp.add_group();
         self.board_grp.prepend_to_local_translation(&Vector3::new(0.0, 0.0, 30.0));
+        self.board_grp.prepend_to_local_transformation(&self.orientation);
 
         self.draw_board();
         self.draw_tetromino();
@@ -435,7 +437,7 @@ fn draw_grid(window: &mut Window, wt: &mut Isometry3<f32>) {
             let _p1 = *wt * p1;
             let p2 = Point3::new(x as f32, 10.0, z as f32);
             let _p2 = *wt * p2;
-            let c = Point3::new(1.0 as f32, 1.0 as f32, 1.0 as f32);
+            let c = Point3::new(0.5 as f32, 0.5 as f32, 0.5 as f32);
             window.draw_line(&_p1, &_p2, &c);
         }
     }
@@ -446,7 +448,7 @@ fn draw_grid(window: &mut Window, wt: &mut Isometry3<f32>) {
             let _p1 = *wt * p1;
             let p2 = Point3::new(x as f32, y as f32, 5.0 as f32);
             let _p2 = *wt * p2;
-            let c = Point3::new(1.0 as f32, 1.0 as f32, 1.0 as f32);
+            let c = Point3::new(0.5 as f32, 0.5 as f32, 0.5 as f32);
             window.draw_line(&_p1, &_p2, &c);
         }
         for z in -5..6 {
@@ -454,7 +456,7 @@ fn draw_grid(window: &mut Window, wt: &mut Isometry3<f32>) {
             let _p1 = *wt * p1;
             let p2 = Point3::new(-5.0 as f32, y as f32, z as f32);
             let _p2 = *wt * p2;
-            let c = Point3::new(1.0 as f32, 1.0 as f32, 1.0 as f32);
+            let c = Point3::new(0.5 as f32, 0.5 as f32, 0.5 as f32);
             window.draw_line(&_p1, &_p2, &c);
         }
      
@@ -469,8 +471,16 @@ fn main() {
     
     window.set_light(Light::StickToCamera);
 
+    //let mut mycam = FirstPerson::new(Point3::new(0.0, 0.0, -30.0),
+    //                                 Point3::new(0.0, 0.0, 0.0));
+
     let mut t1 = SystemTime::now();
 
+    let mut mouse_pos: (f64, f64) = (0.0, 0.0);
+    let mut mouse_press_pos: (f64, f64) = (0.0, 0.0);
+    let mut rotate_board = false;
+
+    //while window.render_with_camera(&mut mycam) {
     while window.render() {
 
         let mut wt = game.board_grp.data().world_transformation();
@@ -497,6 +507,30 @@ fn main() {
 
                     event.inhibited = true // override the default keyboard handler
                 },
+                WindowEvent::MouseButton(button, Action::Press, mods) => {
+                    rotate_board = true;
+                    mouse_press_pos = mouse_pos;
+                    event.inhibited = true // override the default mouse handler
+                },
+                WindowEvent::MouseButton(button, Action::Release, mods) => {
+                    rotate_board = false;
+                    event.inhibited = true // override the default mouse handler
+                },
+                WindowEvent::CursorPos(x, y) => {
+                    mouse_pos = (x, y);
+                    if rotate_board {
+                        game.orientation.prepend_rotation_mut(
+                            &Vector3::new(//((mouse_pos.0 - mouse_press_pos.0) /
+                                // 1000.0) as f32,
+                                0.0,
+                                ((mouse_pos.1 - mouse_press_pos.1) /
+                                 1000.0) as f32,
+                                //0.0,
+                                0.0));
+                    }
+
+                    event.inhibited = true // override the default mouse handler
+                },
                 _ => (),
             }
         }
@@ -506,7 +540,9 @@ fn main() {
                 t1 = SystemTime::now();
             }
         }
+
     }
 }
+
 
 

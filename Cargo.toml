@@ -7,6 +7,7 @@ authors = ["Steve Bradley <stevebradley@gmail.com>"]
 nalgebra = "0.8.*"
 glfw = "0.2.*"
 rand = "0.3"
+num = "0.1.32"
 
 [dependencies.kiss3d]
 git = "https://github.com/sebcrozet/kiss3d"
