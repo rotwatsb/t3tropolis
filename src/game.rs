@@ -30,7 +30,7 @@ const SColor: Color = (0.0, 1.0, 0.0);
 const TColor: Color = (1.0, 0.0, 0.0);
 const ZColor: Color = (0.5, 0.0, 0.5);
 
-#[derive(Copy, Clone, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, PartialEq, RustcDecodable, RustcEncodable, Debug)]
 pub enum Cell {
     E, I, J, L, O, S, T, Z,
 }
@@ -258,6 +258,7 @@ impl Game {
             tetro_pos: (ROWS as i8 - 3,  COLS as i8 / 2 - 1),
             mp: Mp::new(),
         };
+        g.mp.open_peers();
         g
     }
 
@@ -292,10 +293,10 @@ impl Game {
         }
     }
 
-    fn update(&mut self) {
+    fn update_peers(&mut self) {
         let my_ps = PlayerState::new(self);
         self.mp.issue_update(&my_ps);
-        let ps = self.mp.get_updates();
+        self.mp.get_updates();
     }
 
     fn move_down(&mut self) {
@@ -308,7 +309,7 @@ impl Game {
 	    self.tetro_pos = (ROWS as i8 - 3, COLS as i8 / 2 - 1);
  	    self.new_tetromino();
 	}
-        self.update();
+        self.update_peers();
     }
 
     fn drop(&mut self) {
@@ -403,45 +404,57 @@ impl Game {
         self.board_grp.prepend_to_local_translation(&Vector3::new(0.0, 0.0, 30.0));
         self.board_grp.prepend_to_local_transformation(&self.orientation);
 
-        self.draw_board();
-        self.draw_tetromino();
+        self.draw_boards();
+        self.draw_tetrominos();
     }
 
-    fn draw_board(&mut self) {
-        for r in 0..ROWS {
-            for c in 0..COLS {
-                if self.board[r][c] != Cell::E {
-                    let mut cube =
-                        self.board_grp.add_cube(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
-                    cube.prepend_to_local_translation(
-                        &Vector3::new(c as f32 - (COLS as f32 / 2.0 - 0.5),
-                                      r as f32 - (ROWS as f32 / 2.0 - 0.5),
-                                      -(COLS as f32 / 2.0 - 0.5)));
-                    let color = cell_color(self.board[r][c]);
-                    cube.set_color(color.0, color.1, color.2);
+    fn draw_boards(&mut self) {
+        fn draw_board(board: &[[Cell; COLS]; ROWS], id: usize, board_grp: &mut SceneNode) {
+            for r in 0..ROWS {
+                for c in 0..COLS {
+                    if board[r][c] != Cell::E {
+                        let mut cube =
+                            board_grp.add_cube(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+                        cube.prepend_to_local_translation(
+                            &Vector3::new(c as f32 - (COLS as f32 / 2.0 - 0.5),
+                                          r as f32 - (ROWS as f32 / 2.0 - 0.5),
+                                          -(COLS as f32 / 2.0 - 0.5) + id as f32));
+                        let color = cell_color(board[r][c]);
+                        cube.set_color(color.0, color.1, color.2);
+                    }
                 }
             }
         }
+        draw_board(&self.board, 0, &mut self.board_grp);
+        for ps in self.mp.peer_states.iter_mut() {
+            println!("EH!!!");
+            draw_board(&ps.board, ps.id, &mut self.board_grp);
+        }
     }
 
-    fn draw_tetromino(&mut self) {
-        for r in 0..4 {
-            for c in 0..4 {
-                if self.tetromino.0[self.tetromino.1][r][c] != 0 {
-                    let mut cube =
-                        self.tetromino_grp.add_cube(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
-                    cube.prepend_to_local_translation(
-                        &Vector3::new((self.tetro_pos.1 + c as i8) as f32 -
-                                      (COLS as f32 / 2.0 - 0.5),
-                                      (self.tetro_pos.0 + r as i8) as f32 -
-                                      (ROWS as f32 / 2.0 - 0.5),
-                                      -(COLS as f32 / 2.0 - 0.5)));
-                    let color = tetro_color(self.tetromino.0);
-                    cube.set_color(color.0, color.1, color.2);
+    fn draw_tetrominos(&mut self) {
+        fn draw_tetromino(tetromino: &(Shape, usize), tetro_pos: &(i8, i8),
+                          id: usize, tetromino_grp: &mut SceneNode) {
+            for r in 0..4 {
+                for c in 0..4 {
+                    if tetromino.0[tetromino.1][r][c] != 0 {
+                        let mut cube =
+                            tetromino_grp.add_cube(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+                        cube.prepend_to_local_translation(
+                            &Vector3::new((tetro_pos.1 + c as i8) as f32 -
+                                          (COLS as f32 / 2.0 - 0.5),
+                                          (tetro_pos.0 + r as i8) as f32 -
+                                          (ROWS as f32 / 2.0 - 0.5),
+                                          -(COLS as f32 / 2.0 - 0.5)));
+                        let color = tetro_color(tetromino.0);
+                        cube.set_color(color.0, color.1, color.2);
+                    }
                 }
             }
         }
+        draw_tetromino(&self.tetromino, &self.tetro_pos, 0, &mut self.tetromino_grp);
     }
+
 }
 
 fn draw_grid(window: &mut Window, wt: &mut Isometry3<f32>) {
