@@ -256,9 +256,8 @@ impl Game {
             tetromino: (IShape, 0),
             next_tetromino: (IShape, 0),
             tetro_pos: (ROWS as i8 - 3,  COLS as i8 / 2 - 1),
-            mp: Mp::new(),
+            mp: Mp::new(false, 2),
         };
-        g.mp.open_peers();
         g
     }
 
@@ -295,7 +294,7 @@ impl Game {
 
     fn update_peers(&mut self) {
         let my_ps = PlayerState::new(self);
-        self.mp.issue_update(&my_ps);
+        self.mp.issue_update(my_ps);
         self.mp.get_updates();
     }
 
@@ -316,6 +315,7 @@ impl Game {
         while !self.collision(-1, 0) {//&& self.tetro_pos.0 > 0 {
             self.tetro_pos.0 -= 1;
         }
+        println!("tetro pos: {:?}", self.tetro_pos);
     }
 
     fn clear_lines(&mut self) {
@@ -427,7 +427,6 @@ impl Game {
         }
         draw_board(&self.board, 0, &mut self.board_grp);
         for ps in self.mp.peer_states.iter_mut() {
-            println!("EH!!!");
             draw_board(&ps.board, ps.id, &mut self.board_grp);
         }
     }

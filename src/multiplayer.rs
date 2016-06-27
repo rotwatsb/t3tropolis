@@ -5,58 +5,52 @@ use std::thread;
 
 use rustc_serialize::json;
 
+use networkadapter::*;
+
 use game;
 
 pub struct Mp {
-    listener: TcpListener,
-    sender: TcpStream,
-    peers: Vec<TcpStream>,
+    num_players: usize,
+    connection: TcpStream,
     pub peer_states: Vec<PlayerState>,
 }
 
 impl Mp {
-    pub fn new() -> Mp {
+    pub fn new(host: bool, num_players: usize) -> Mp {
+        if host { create_server(); }
         Mp {
-            listener: TcpListener::bind("127.0.0.1:8888").unwrap(),
-            sender: TcpStream::connect("127.0.0.1:8888").unwrap(),
-            peers: Vec::new(),
+            num_players: num_players,
+            connection: connect_to_server().unwrap(),
             peer_states: Vec::new(),
         }
     }
 
-    pub fn issue_update(&mut self, ps: &PlayerState) {
+    pub fn issue_update(&mut self, ps: PlayerState) {
+        /*
         let ps_enc = json::encode(&ps).unwrap();
-        self.sender.write(ps_enc.as_bytes());
-    }
-
-    pub fn open_peers(&mut self) {
-        for stream in self.listener.incoming().take(1) {
-            match stream {
-                Ok(stream) => {
-                    self.peers.push(stream);
-                }
-                Err(e) => { }
-            }
-        }
+        println!("{:?}", ps_enc);
+        println!("{:?}", ps_enc.as_bytes());
+        let data = Data { user: user.clone(), msg: msg };
+         */
+        let adapter = NetworkAdapter::new_outgoing(ps);
+        send_data(&mut self.connection, adapter);
+        //self.sender.write(ps_enc.as_bytes());
     }
 
     pub fn get_updates(&mut self) {
-        self.peer_states.drain(..);
-        println!("{}", self.peers.len());
-        let mut buf: [u8; 1338] = [0; 1338];
-        for ref mut stream in self.peers.iter_mut() {
-            println!("HOOOOOOOOOOOOOOOO");
-            stream.read(&mut buf);
-            let mut ps: PlayerState =
-                json::decode(str::from_utf8(&buf[..]).unwrap()).unwrap();
-            println!("{:?}", ps);
+        
+        for i in 0..self.num_players - 1 {
+            let mut stream_read = self.connection.try_clone().unwrap();
+            let recv_adapter = NetworkAdapter::new_incoming(&mut stream_read);
+            let ps: PlayerState = recv_adapter.get_data();
+            println!("Players state: {:?}", ps.clone());
             self.peer_states.push(ps);
         }
     }
 }
 
 
-#[derive(RustcDecodable, RustcEncodable, Debug)]
+#[derive(RustcDecodable, RustcEncodable, Debug, Clone)]
 pub struct PlayerState {
     pub board: [[game::Cell; game::COLS]; game::ROWS],
     pub tetromino: (game::Shape, usize),

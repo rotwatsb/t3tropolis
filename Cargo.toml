@@ -9,6 +9,8 @@ glfw = "0.2.*"
 rand = "0.3"
 num = "0.1.32"
 rustc-serialize = "0.3"
+bincode = "*"
 
 [dependencies.kiss3d]
 git = "https://github.com/sebcrozet/kiss3d"
+

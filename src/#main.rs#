@@ -11,6 +11,9 @@ mod multiplayer;
 mod networkadapter;
 
 fn main() {
+
+            let mut stream = connect_to_server().unwrap();
+        let mut stream_read = stream.try_clone().unwrap();
     game::play_tetris();
 }
 
