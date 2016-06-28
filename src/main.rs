@@ -10,7 +10,7 @@ mod game;
 mod multiplayer;
 mod networkadapter;
 
-use game::{PlayerState, Graphics, NUM_PLAYERS};
+use game::{PlayerState, Graphics};
 use multiplayer::Mp;
 use networkadapter::*;
 
@@ -30,7 +30,7 @@ fn main() {
     let mut mp: Mp = Mp::new();
 
     let mut peer_states: Arc<Mutex<Vec<PlayerState>>> =
-        Arc::new(Mutex::new(vec![PlayerState::new(0); NUM_PLAYERS]));
+        Arc::new(Mutex::new(vec![PlayerState::new(0); mp.id + 1]));
     
     let mut my_state: PlayerState = PlayerState::new(mp.id);
 
@@ -49,7 +49,10 @@ fn main() {
             let ps: PlayerState = recv_adapter.get_data();
             let id = ps.id;
             let mut ps_vec = data.lock().unwrap();
-            (*ps_vec)[id] = ps;
+            if id < (*ps_vec).len() {
+                (*ps_vec)[id] = ps;
+            }
+            else { (*ps_vec).push(ps); }
         }
     });
 
@@ -65,7 +68,7 @@ fn main() {
 
         let data = peer_states.clone();
         let mut ps_vec = data.lock().unwrap();
-        for i in 0..NUM_PLAYERS {
+        for i in 0..(*ps_vec).len() {
             if i != mp.id {
                 states.push((*ps_vec)[i].clone());
             }
