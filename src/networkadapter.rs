@@ -12,7 +12,7 @@ use bincode::SizeLimit;
 use bincode::rustc_serialize::{encode, decode};
 use rustc_serialize::{Encodable, Decodable};
 
-use multiplayer::PlayerState;
+use game::PlayerState;
 
 #[derive(Debug)]
 pub struct NetworkAdapter<T> 
@@ -82,25 +82,22 @@ enum NetworkEvent {
 fn handle_stream(mut stream: TcpStream, id: usize, tx: Sender<NetworkEvent>) {
     thread::spawn(move|| {
         loop {
-            //println!("server: in stream thread");
             let recv_adapter = 
                 NetworkAdapter::new_incoming(&mut stream);
-            //println!("Recv: {:?}", recv_adapter);
-            //println!("Recv: {:?}", recv_adapter.get_data());
+
             let data: PlayerState = recv_adapter.get_data();
-            println!("Recv data: {:?}", data);
             tx.send(NetworkEvent::NewMessage(id, data));
         }
     });
 }
 
 
-pub fn create_server() {
+pub fn create_server(host_port: String) {
     let (tx, rx): (Sender<NetworkEvent>, Receiver<NetworkEvent>) =
                    mpsc::channel();
-    let addr = "127.0.0.1:1337";
+    let addr: String = "127.0.0.1:".to_string() + &host_port;
     println!("Creating a server at {}", addr);
-    let listener = TcpListener::bind(addr).unwrap();
+    let listener = TcpListener::bind(&addr as &str).unwrap();
     // handle incoming connections
     thread::spawn(move|| {
         let mut id = 0;
@@ -141,26 +138,23 @@ pub fn create_server() {
             }
         }
     });
-
 }
 
 pub fn connect_to_server() -> io::Result<TcpStream> {
-    let server = "127.0.0.1:1337";
-    println!("Connecting to server {}!", server);
-    let mut stream = try!(TcpStream::connect(server));
-    //try!(stream.set_nonblocking(true));
+    print!("Connect to: ");
+    let addr = &get_input();
+    println!("Connecting to server {}!", addr);
+    let mut stream = try!(TcpStream::connect(&addr as &str));
     Ok(stream)
 }
 
 pub fn send_data<T>(stream: &mut TcpStream, 
                     adapter: NetworkAdapter<T>) 
-    where T: Encodable + Decodable
-{
+    where T: Encodable + Decodable {
     stream.write_all(adapter.data.as_slice());
-    //println!("sending data {:?}", adapter);
 }
 
-fn to_host_or_not() {
+pub fn to_host_or_not() {
     println!("Would you like to host? (y/n) ");
     let mut input = String::new();
     print!("> ");
@@ -169,7 +163,9 @@ fn to_host_or_not() {
     let input = input.trim();
     match input {
         "y" => {
-            create_server();
+            print!("Host port: ");
+            let port = get_input();
+            create_server(port);
         }
         _ => return
     }
@@ -187,5 +183,6 @@ fn get_username() -> String {
     println!("Enter a username: ");
     get_input()
 }
+
 
 
