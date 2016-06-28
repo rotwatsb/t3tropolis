@@ -11,7 +11,7 @@ use num::traits::One;
 
 use rustc_serialize::{Encodable, Decodable};
 
-pub const NUM_PLAYERS: usize = 2;
+pub const NUM_PLAYERS: usize = 3;
 
 const CUBE_SIZE: f32 = 0.8;
 pub const ROWS: usize = 22;
@@ -422,7 +422,7 @@ impl Graphics {
                             &Vector3::new(c as f32 - (COLS as f32 / 2.0 - 0.5),
                                           r as f32 - (ROWS as f32 / 2.0 - 0.5),
                                           -(COLS as f32 / 2.0 - 0.5) +
-                                          ((my_id - id) % NUM_PLAYERS) as f32));
+                                          ((id as i8 - my_id as i8) % NUM_PLAYERS as i8) as f32));
                         let color = cell_color(board[r][c]);
                         cube.set_color(color.0, color.1, color.2);
                     }
@@ -442,13 +442,14 @@ impl Graphics {
                     if tetromino.0[tetromino.1][r][c] != 0 {
                         let mut cube =
                             tetromino_grp.add_cube(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+                        println!("my_id: {}, id: {}, z: {}", my_id, id, -(COLS as f32 / 2.0 - 0.5) + ((id as i8 - my_id as i8) % NUM_PLAYERS as i8) as f32);
                         cube.prepend_to_local_translation(
                             &Vector3::new((tetro_pos.1 + c as i8) as f32 -
                                           (COLS as f32 / 2.0 - 0.5),
                                           (tetro_pos.0 + r as i8) as f32 -
                                           (ROWS as f32 / 2.0 - 0.5),
                                           -(COLS as f32 / 2.0 - 0.5) +
-                                          ((my_id - id) % NUM_PLAYERS) as f32));
+                                          ((id as i8 - my_id as i8) % NUM_PLAYERS as i8) as f32));
                         let color = tetro_color(tetromino.0);
                         cube.set_color(color.0, color.1, color.2);
                     }

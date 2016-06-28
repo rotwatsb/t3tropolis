@@ -29,8 +29,8 @@ fn main() {
 
     let mut mp: Mp = Mp::new();
 
-    let mut peer_states: Vec<Arc<Mutex<PlayerState>>> =
-        vec![Arc::new(Mutex::new(PlayerState::new(0))); NUM_PLAYERS - 1];
+    let mut peer_states: Arc<Mutex<Vec<PlayerState>>> =
+        Arc::new(Mutex::new(vec![PlayerState::new(0); NUM_PLAYERS]));
     
     let mut my_state: PlayerState = PlayerState::new(mp.id);
 
@@ -39,19 +39,20 @@ fn main() {
 
     let mut graphics = Graphics::new(&mut window);
     my_state.begin();
-    
-    for i in 0..NUM_PLAYERS - 1 {
-        let data = peer_states[i].clone();
-        let mut stream_read = mp.connection.try_clone().unwrap();
-        thread::spawn(move || {
-            loop {
-                let recv_adapter = NetworkAdapter::new_incoming(&mut stream_read);
-                let mut ps = data.lock().unwrap();
-                *ps = recv_adapter.get_data();
-            }
-        });
-    }
-    
+
+    let mut stream_read = mp.connection.try_clone().unwrap();
+    let data = peer_states.clone();
+
+    thread::spawn(move || {
+        loop {
+            let recv_adapter = NetworkAdapter::new_incoming(&mut stream_read);
+            let ps: PlayerState = recv_adapter.get_data();
+            let id = ps.id;
+            let mut ps_vec = data.lock().unwrap();
+            (*ps_vec)[id] = ps;
+        }
+    });
+
     let mut t1 = SystemTime::now();
 
     let mut mouse_pos: (f64, f64) = (0.0, 0.0);
@@ -61,12 +62,16 @@ fn main() {
     while window.render() {
 
         let mut states: Vec<PlayerState> = Vec::new();
-        for i in 0..NUM_PLAYERS - 1 {
-            let data = peer_states[i].clone();
-            let mut ps = data.lock().unwrap();
-            states.push((*ps).clone());
+
+        let data = peer_states.clone();
+        let mut ps_vec = data.lock().unwrap();
+        for i in 0..NUM_PLAYERS {
+            if i != mp.id {
+                states.push((*ps_vec)[i].clone());
+            }
+            else { states.push(my_state.clone()); }
         }
-        states.push(my_state.clone());
+
         graphics.draw_grid(&mut window);
         graphics.draw(&mut window, &states, mp.id);
 
