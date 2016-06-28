@@ -11,6 +11,8 @@ use num::traits::One;
 
 use rustc_serialize::{Encodable, Decodable};
 
+pub const NUM_PLAYERS: usize = 2;
+
 const CUBE_SIZE: f32 = 0.8;
 pub const ROWS: usize = 22;
 pub const COLS: usize = 10;
@@ -396,7 +398,7 @@ impl Graphics {
     }
 
     pub fn draw(&mut self, window: &mut Window,
-            player_states: &Vec<PlayerState>) {
+            player_states: &Vec<PlayerState>, my_id: usize) {
         self.board_grp.unlink();
         self.tetromino_grp.unlink();
         self.board_grp = window.add_group();
@@ -404,12 +406,13 @@ impl Graphics {
         self.board_grp.prepend_to_local_translation(&Vector3::new(0.0, 0.0, 30.0));
         self.board_grp.prepend_to_local_transformation(&self.orientation);
 
-        self.draw_boards(player_states);
-        self.draw_tetrominos(player_states);
+        self.draw_boards(player_states, my_id);
+        self.draw_tetrominos(player_states, my_id);
     }
 
-    fn draw_boards(&mut self, player_states: &Vec<PlayerState>) {
-        fn draw_board(board: &[[Cell; COLS]; ROWS], id: usize, board_grp: &mut SceneNode) {
+    fn draw_boards(&mut self, player_states: &Vec<PlayerState>, my_id: usize) {
+        fn draw_board(board: &[[Cell; COLS]; ROWS], id: usize,
+                      board_grp: &mut SceneNode, my_id: usize) {
             for r in 0..ROWS {
                 for c in 0..COLS {
                     if board[r][c] != Cell::E {
@@ -418,7 +421,8 @@ impl Graphics {
                         cube.prepend_to_local_translation(
                             &Vector3::new(c as f32 - (COLS as f32 / 2.0 - 0.5),
                                           r as f32 - (ROWS as f32 / 2.0 - 0.5),
-                                          -(COLS as f32 / 2.0 - 0.5) + id as f32));
+                                          -(COLS as f32 / 2.0 - 0.5) +
+                                          ((my_id - id) % NUM_PLAYERS) as f32));
                         let color = cell_color(board[r][c]);
                         cube.set_color(color.0, color.1, color.2);
                     }
@@ -426,13 +430,13 @@ impl Graphics {
             }
         }
         for ps in player_states {
-            draw_board(&ps.board, ps.id, &mut self.board_grp);
+            draw_board(&ps.board, ps.id, &mut self.board_grp, my_id);
         }
     }
 
-    fn draw_tetrominos(&mut self, player_states: &Vec<PlayerState>) {
+    fn draw_tetrominos(&mut self, player_states: &Vec<PlayerState>, my_id: usize) {
         fn draw_tetromino(tetromino: &(Shape, usize), tetro_pos: &(i8, i8),
-                          id: usize, tetromino_grp: &mut SceneNode) {
+                          id: usize, tetromino_grp: &mut SceneNode, my_id: usize) {
             for r in 0..4 {
                 for c in 0..4 {
                     if tetromino.0[tetromino.1][r][c] != 0 {
@@ -443,7 +447,8 @@ impl Graphics {
                                           (COLS as f32 / 2.0 - 0.5),
                                           (tetro_pos.0 + r as i8) as f32 -
                                           (ROWS as f32 / 2.0 - 0.5),
-                                          -(COLS as f32 / 2.0 - 0.5) + id as f32));
+                                          -(COLS as f32 / 2.0 - 0.5) +
+                                          ((my_id - id) % NUM_PLAYERS) as f32));
                         let color = tetro_color(tetromino.0);
                         cube.set_color(color.0, color.1, color.2);
                     }
@@ -452,7 +457,7 @@ impl Graphics {
         }
         for ps in player_states {
             draw_tetromino(&ps.tetromino, &ps.tetro_pos,
-                           ps.id, &mut self.board_grp);
+                           ps.id, &mut self.board_grp, my_id);
         }
     }
 

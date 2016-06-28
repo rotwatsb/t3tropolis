@@ -10,7 +10,7 @@ mod game;
 mod multiplayer;
 mod networkadapter;
 
-use game::{PlayerState, Graphics};
+use game::{PlayerState, Graphics, NUM_PLAYERS};
 use multiplayer::Mp;
 use networkadapter::*;
 
@@ -25,14 +25,14 @@ use std::time::{Duration, SystemTime};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-pub const NUM_PLAYERS: usize = 2;
-
 fn main() {
+
+    let mut mp: Mp = Mp::new();
 
     let mut peer_states: Vec<Arc<Mutex<PlayerState>>> =
         vec![Arc::new(Mutex::new(PlayerState::new(0))); NUM_PLAYERS - 1];
     
-    let mut my_state: PlayerState = PlayerState::new(0);
+    let mut my_state: PlayerState = PlayerState::new(mp.id);
 
     let mut window = Window::new("T3tropolis");
     window.set_light(Light::StickToCamera);
@@ -40,8 +40,6 @@ fn main() {
     let mut graphics = Graphics::new(&mut window);
     my_state.begin();
     
-    let mut mp: Mp = Mp::new();
-
     for i in 0..NUM_PLAYERS - 1 {
         let data = peer_states[i].clone();
         let mut stream_read = mp.connection.try_clone().unwrap();
@@ -70,7 +68,7 @@ fn main() {
         }
         states.push(my_state.clone());
         graphics.draw_grid(&mut window);
-        graphics.draw(&mut window, &states);
+        graphics.draw(&mut window, &states, mp.id);
 
         
         for mut event in window.events().iter() {

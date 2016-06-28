@@ -32,10 +32,8 @@ impl<T> NetworkAdapter<T>
         assert!(length > 4);
         let read_length = (length as usize) - 4;
         let mut data: Vec<u8> = vec![0; read_length];
-        println!("read length {}", read_length);
         stream.read_exact(&mut data.as_mut_slice()).unwrap();
-        println!("read incoming bytes: {:?}", data);
-        NetworkAdapter {
+           NetworkAdapter {
             length: length,
             data: data,
             phantom: PhantomData::<T>
@@ -45,7 +43,6 @@ impl<T> NetworkAdapter<T>
     pub fn new_outgoing(data: T) -> Self {
         let mut data = encode(&data, SizeLimit::Infinite).unwrap();
         let length = (4 + data.len()) as u32;
-        //println!("length is {}", length);
         if length < 5 {panic!("data can't be zero")}
         let mut len = encode(&length, SizeLimit::Infinite).unwrap();
         len.append(&mut data);
@@ -95,8 +92,8 @@ fn handle_stream(mut stream: TcpStream, id: usize, tx: Sender<NetworkEvent>) {
 pub fn create_server(host_port: String) {
     let (tx, rx): (Sender<NetworkEvent>, Receiver<NetworkEvent>) =
                    mpsc::channel();
-    let addr: String = "127.0.0.1:".to_string() + &host_port;
-    println!("Creating a server at {}", addr);
+    let addr: String = "0.0.0.0:".to_string() + &host_port;
+    println!("Creating a servers at {}", addr);
     let listener = TcpListener::bind(&addr as &str).unwrap();
     // handle incoming connections
     thread::spawn(move|| {
@@ -124,6 +121,10 @@ pub fn create_server(host_port: String) {
                 NetworkEvent::NewConnection(id, stream) => {
                     println!("Connection from stream #{}", id);
                     conns.push(stream);
+                    println!("SERVER ID: {}", id);
+                    let adapter = NetworkAdapter::new_outgoing(id);
+                    conns[id].write(adapter.data.as_slice());
+                    println!("GOT HERE!");
                 },
                 NetworkEvent::NewMessage(id, data) => {
                     println!("New message from id {}", id);
@@ -179,10 +180,6 @@ fn get_input() -> String {
     input.trim().to_string()
 }
 
-fn get_username() -> String {
-    println!("Enter a username: ");
-    get_input()
-}
 
 
 
