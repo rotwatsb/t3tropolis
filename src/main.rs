@@ -81,15 +81,20 @@ fn main() {
 
         if let Some(ps) = swap_if_confirmed(&mut states, mp.id) {
             ps_to_swap = Some(ps);
+            println!("SAVED PLAYER {} STATE", ps_to_swap.id);
         }
         if let None = ps_to_swap.clone() {
             ticks += 1;
+            println!("tick (in): {}", ticks);
         }
+        println!("tick (out): {}", ticks);
         if ticks > 50 {
             if let Some(ps) = ps_to_swap.clone() {
+                println!("performing swap");
                 my_state.next_tetromino.0 = ps.next_tetromino.0;
                 my_state.next_tetromino.1 = ps.next_tetromino.1;
                 my_state.next_tetromino.2 = mp.id;
+                ps_to_swap = None;
             }
             ticks = 0;
         }

@@ -28,7 +28,7 @@ impl<T> NetworkAdapter<T>
 {
     pub fn new_incoming(stream: &mut TcpStream) -> Self {
         let length: u32 = read_length(stream);
-        //println!("packet has length {}", length);
+
         assert!(length > 4);
         let read_length = (length as usize) - 4;
         let mut data: Vec<u8> = vec![0; read_length];
@@ -64,10 +64,8 @@ impl<T> NetworkAdapter<T>
 }
 
 fn read_length(stream: &mut TcpStream) -> u32 {
-    println!("Trying to read length");
     let mut buf: [u8; 4] = [0; 4];
     stream.read_exact(&mut buf).unwrap();
-    println!("Managed to read: {:?}", buf);
     decode(&buf).unwrap()
 }
 
@@ -121,10 +119,8 @@ pub fn create_server(host_port: String) {
                 NetworkEvent::NewConnection(id, stream) => {
                     println!("Connection from stream #{}", id);
                     conns.push(stream);
-                    println!("SERVER ID: {}", id);
                     let adapter = NetworkAdapter::new_outgoing(id);
                     conns[id].write(adapter.data.as_slice());
-                    println!("GOT HERE!");
                 },
                 NetworkEvent::NewMessage(id, data) => {
                     println!("New message from id {}", id);
