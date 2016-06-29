@@ -62,6 +62,9 @@ fn main() {
     let mut mouse_press_pos: (f64, f64) = (0.0, 0.0);
     let mut rotate_board = false;
 
+    let mut ticks = 0;
+    let mut ps_to_swap: Option<PlayerState>  = None;
+
     while window.render() {
 
         let mut states: Vec<PlayerState> = Vec::new();
@@ -76,9 +79,19 @@ fn main() {
             else { states.push(my_state.clone()); }
         }
 
-        if swap_if_confirmed(&mut states, mp.id) {
-            my_state = states[mp.id].clone();
-            mp.issue_update(my_state.clone());
+        if let Some(ps) = swap_if_confirmed(&mut states, mp.id) {
+            ps_to_swap = Some(ps);
+        }
+        if let None = ps_to_swap.clone() {
+            ticks += 1;
+        }
+        if ticks > 50 {
+            if let Some(ps) = ps_to_swap.clone() {
+                my_state.next_tetromino.0 = ps.next_tetromino.0;
+                my_state.next_tetromino.1 = ps.next_tetromino.1;
+                my_state.next_tetromino.2 = mp.id;
+            }
+            ticks = 0;
         }
 
         graphics.draw_grid(&mut window);
@@ -142,17 +155,14 @@ fn main() {
     }
 }
 
-fn swap_if_confirmed(states: &mut Vec<PlayerState>, my_id: usize) -> bool {
+fn swap_if_confirmed(states: &mut Vec<PlayerState>, my_id: usize) -> Option<PlayerState> {
     let my_ps: &PlayerState = &states[my_id].clone();
-    if my_ps.next_tetromino.2 == my_id { return false; }
+    if my_ps.next_tetromino.2 == my_id { return None; }
     let o_ps: &PlayerState = &states[my_ps.next_tetromino.2].clone();
     if o_ps.next_tetromino.2 == my_id {
-        states[my_id].next_tetromino.0 = o_ps.next_tetromino.0;
-        states[my_id].next_tetromino.1 = o_ps.next_tetromino.1;
-        states[my_id].next_tetromino.2 = my_id;
-        return true;
+        Some(o_ps.clone())
     }
-    false
+    else { None }
 }
 
 
