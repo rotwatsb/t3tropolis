@@ -83,7 +83,7 @@ fn main() {
             maybe_ps_to_swap = Some(ps.clone());
             println!("SAVED PLAYER {} STATE", ps.id);
         }
-        if let None = maybe_ps_to_swap.clone() {
+        if let Some(_) = maybe_ps_to_swap.clone() {
             ticks += 1;
             println!("tick (in): {}", ticks);
         }
