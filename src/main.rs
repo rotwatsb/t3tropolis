@@ -76,7 +76,10 @@ fn main() {
             else { states.push(my_state.clone()); }
         }
 
-        swap_if_confirmed(&mut states, mp.id);
+        if swap_if_confirmed(&mut states, mp.id) {
+            my_state = states[mp.id].clone();
+            mp.issue_update(my_state.clone());
+        }
 
         graphics.draw_grid(&mut window);
         graphics.draw(&mut window, &states, mp.id);
