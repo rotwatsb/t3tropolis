@@ -1,3 +1,6 @@
+use std::cmp;
+use std::f32;
+
 use rand::{OsRng, Rng};
 
 use kiss3d::window::Window;
@@ -233,7 +236,7 @@ const ZShape: Shape = [
 pub struct PlayerState {
     pub board: [[Cell; COLS]; ROWS],
     pub tetromino: (Shape, usize),
-    pub next_tetromino: (Shape, usize),
+    pub next_tetromino: (Shape, usize, usize),
     pub tetro_pos: (i8, i8),
     pub id: usize,
 }
@@ -243,7 +246,7 @@ impl PlayerState {
         PlayerState {
             board: [[Cell::E; COLS]; ROWS],
             tetromino: (IShape, 0),
-            next_tetromino: (IShape, 0),
+            next_tetromino: (IShape, 0, id),
             tetro_pos: (ROWS as i8 - 3, COLS as i8 / 2 - 1),
             id: id,
         }
@@ -256,22 +259,27 @@ impl PlayerState {
 
     fn select_next_shape(&mut self) {
         let mut rng = OsRng::new().unwrap();
-        self.tetromino =
+        self.next_tetromino =
             match (rng.next_f32() * 7.0) as u8 {
-                0 => (IShape, 0),
-                1 => (JShape, 0),
-                2 => (LShape, 0),
-                3 => (OShape, 0),
-                4 => (SShape, 0),
-                5 => (TShape, 0),
-                6 => (ZShape, 0),
-                _ => (IShape, 0),
+                0 => (IShape, 0, self.id),
+                1 => (JShape, 0, self.id),
+                2 => (LShape, 0, self.id),
+                3 => (OShape, 0, self.id),
+                4 => (SShape, 0, self.id),
+                5 => (TShape, 0, self.id),
+                6 => (ZShape, 0, self.id),
+                _ => (IShape, 0, self.id),
             };
     }
 
     fn new_tetromino(&mut self) {
-        self.tetromino = self.next_tetromino;
+        self.tetromino.0 = self.next_tetromino.0;
+        self.tetromino.1 = self.next_tetromino.1;
         self.select_next_shape();
+    }
+
+    pub fn signal_swap(&mut self, d: isize, n: isize) {
+        self.next_tetromino.2 = ((self.id as isize + d + n) % n) as usize;
     }
 
     pub fn rotate_tetromino(&mut self) {
@@ -403,16 +411,46 @@ impl Graphics {
         self.tetromino_grp.unlink();
         self.board_grp = window.add_group();
         self.tetromino_grp = self.board_grp.add_group();
-        self.board_grp.prepend_to_local_translation(&Vector3::new(0.0, 0.0, 30.0));
+        self.board_grp.prepend_to_local_translation(&Vector3::new(0.0, 2.0, 32.0));
         self.board_grp.prepend_to_local_transformation(&self.orientation);
 
         self.draw_boards(player_states, my_id);
         self.draw_tetrominos(player_states, my_id);
+        self.draw_nexts(player_states, my_id as isize);
+    }
+
+    fn draw_nexts(&mut self, player_states: &Vec<PlayerState>, my_id: isize) {
+        let num_players = player_states.len() as isize;
+        let span = cmp::min(3, num_players);
+        for i in -(span / 2)..f32::ceil(span as f32 / 2.0) as isize {
+            let id = (my_id + i + num_players) % num_players;
+            let tetromino = player_states[id as usize].next_tetromino;
+            for r in 0..4 {
+                for c in 0..4 {
+                    if tetromino.0[tetromino.1][r][c] != 0 {
+                        let mut cube =
+                            self.tetromino_grp.add_cube(CUBE_SIZE,
+                                                        CUBE_SIZE, CUBE_SIZE);
+                        cube.prepend_to_local_translation(
+                            &Vector3::new((c as isize - 4 as isize -
+                                           (COLS / 2) as isize) as f32,
+                                          r as f32 +
+                                          i as f32 * 5.0,
+                                          -(COLS as f32 / 2.0 - 0.5) +
+                                          ((id as i8 - my_id as i8
+                                            + num_players as i8)
+                                           % num_players as i8) as f32));
+                        let color = tetro_color(tetromino.0);
+                        cube.set_color(color.0, color.1, color.2);
+                    }
+                }
+            }
+        }
     }
 
     fn draw_boards(&mut self, player_states: &Vec<PlayerState>, my_id: usize) {
         fn draw_board(board: &[[Cell; COLS]; ROWS], id: usize,
-                      board_grp: &mut SceneNode, my_id: usize) {
+                      board_grp: &mut SceneNode, my_id: usize, num_players: usize) {
             for r in 0..ROWS {
                 for c in 0..COLS {
                     if board[r][c] != Cell::E {
@@ -422,21 +460,25 @@ impl Graphics {
                             &Vector3::new(c as f32 - (COLS as f32 / 2.0 - 0.5),
                                           r as f32 - (ROWS as f32 / 2.0 - 0.5),
                                           -(COLS as f32 / 2.0 - 0.5) +
-                                          ((id as i8 - my_id as i8) % COLS as i8) as f32));
+                                          ((id as i8 - my_id as i8
+                                            + num_players as i8)
+                                           % num_players as i8) as f32));
                         let color = cell_color(board[r][c]);
                         cube.set_color(color.0, color.1, color.2);
                     }
                 }
             }
         }
+        let l = player_states.len();
         for ps in player_states {
-            draw_board(&ps.board, ps.id, &mut self.board_grp, my_id);
+            draw_board(&ps.board, ps.id, &mut self.board_grp, my_id, l);
         }
     }
 
     fn draw_tetrominos(&mut self, player_states: &Vec<PlayerState>, my_id: usize) {
         fn draw_tetromino(tetromino: &(Shape, usize), tetro_pos: &(i8, i8),
-                          id: usize, tetromino_grp: &mut SceneNode, my_id: usize) {
+                          id: usize, tetromino_grp: &mut SceneNode, my_id: usize,
+                          num_players: usize) {
             for r in 0..4 {
                 for c in 0..4 {
                     if tetromino.0[tetromino.1][r][c] != 0 {
@@ -448,16 +490,19 @@ impl Graphics {
                                           (tetro_pos.0 + r as i8) as f32 -
                                           (ROWS as f32 / 2.0 - 0.5),
                                           -(COLS as f32 / 2.0 - 0.5) +
-                                          ((id as i8 - my_id as i8) % COLS as i8) as f32));
+                                          ((id as i8 - my_id as i8
+                                            + num_players as i8)
+                                           % num_players as i8) as f32));
                         let color = tetro_color(tetromino.0);
                         cube.set_color(color.0, color.1, color.2);
                     }
                 }
             }
         }
+        let l = player_states.len();
         for ps in player_states {
             draw_tetromino(&ps.tetromino, &ps.tetro_pos,
-                           ps.id, &mut self.board_grp, my_id);
+                           ps.id, &mut self.board_grp, my_id, l);
         }
     }
 

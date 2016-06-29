@@ -68,6 +68,7 @@ fn main() {
 
         let data = peer_states.clone();
         let mut ps_vec = data.lock().unwrap();
+        let num_peers = (*ps_vec).len();
         for i in 0..(*ps_vec).len() {
             if i != mp.id {
                 states.push((*ps_vec)[i].clone());
@@ -75,10 +76,11 @@ fn main() {
             else { states.push(my_state.clone()); }
         }
 
+        swap_if_confirmed(&mut states, mp.id);
+
         graphics.draw_grid(&mut window);
         graphics.draw(&mut window, &states, mp.id);
 
-        
         for mut event in window.events().iter() {
             match event.value {
                 WindowEvent::Key(code, _, Action::Press, _) => {
@@ -93,18 +95,22 @@ fn main() {
                             my_state.move_right(),
                         Key::Space =>
                             my_state.drop(),
+                        Key::E =>
+                            my_state.signal_swap(-1 as isize, num_peers as isize),
+                        Key::C =>
+                            my_state.signal_swap(1 as isize, num_peers as isize),
                         _ => (),
                     }
                     mp.issue_update(my_state.clone());
 
                     event.inhibited = true // override the default keyboard handler
                 },
-                WindowEvent::MouseButton(button, Action::Press, mods) => {
+                WindowEvent::MouseButton(_, Action::Press, mods) => {
                     rotate_board = true;
                     mouse_press_pos = mouse_pos;
                     event.inhibited = true // override the default mouse handler
                 },
-                WindowEvent::MouseButton(button, Action::Release, mods) => {
+                WindowEvent::MouseButton(_, Action::Release, mods) => {
                     rotate_board = false;
                     event.inhibited = true // override the default mouse handler
                 },
@@ -133,7 +139,18 @@ fn main() {
     }
 }
 
-
+fn swap_if_confirmed(states: &mut Vec<PlayerState>, my_id: usize) -> bool {
+    let my_ps: &PlayerState = &states[my_id].clone();
+    if my_ps.next_tetromino.2 == my_id { return false; }
+    let o_ps: &PlayerState = &states[my_ps.next_tetromino.2].clone();
+    if o_ps.next_tetromino.2 == my_id {
+        states[my_id].next_tetromino.0 = o_ps.next_tetromino.0;
+        states[my_id].next_tetromino.1 = o_ps.next_tetromino.1;
+        states[my_id].next_tetromino.2 = my_id;
+        return true;
+    }
+    false
+}
 
 
 
