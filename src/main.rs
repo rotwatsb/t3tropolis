@@ -63,7 +63,7 @@ fn main() {
     let mut rotate_board = false;
 
     let mut ticks = 0;
-    let mut ps_to_swap: Option<PlayerState>  = None;
+    let mut maybe_ps_to_swap: Option<PlayerState>  = None;
 
     while window.render() {
 
@@ -80,21 +80,21 @@ fn main() {
         }
 
         if let Some(ps) = swap_if_confirmed(&mut states, mp.id) {
-            ps_to_swap = Some(ps);
-            println!("SAVED PLAYER {} STATE", ps_to_swap.id);
+            maybe_ps_to_swap = Some(ps.clone());
+            println!("SAVED PLAYER {} STATE", ps.id);
         }
-        if let None = ps_to_swap.clone() {
+        if let None = maybe_ps_to_swap.clone() {
             ticks += 1;
             println!("tick (in): {}", ticks);
         }
         println!("tick (out): {}", ticks);
         if ticks > 50 {
-            if let Some(ps) = ps_to_swap.clone() {
+            if let Some(ps) = maybe_ps_to_swap.clone() {
                 println!("performing swap");
                 my_state.next_tetromino.0 = ps.next_tetromino.0;
                 my_state.next_tetromino.1 = ps.next_tetromino.1;
                 my_state.next_tetromino.2 = mp.id;
-                ps_to_swap = None;
+                maybe_ps_to_swap = None;
             }
             ticks = 0;
         }
