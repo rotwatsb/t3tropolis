@@ -1,5 +1,3 @@
-use std::cmp;
-use std::mem;
 use std::sync::mpsc;
 use std::sync::mpsc::{Sender, Receiver};
 use std::net::{TcpListener, TcpStream};
@@ -58,9 +56,6 @@ impl<T> NetworkAdapter<T>
         decode(&self.data[..]).unwrap()
     }
 
-    pub fn length(&self) -> usize {
-        self.length as usize
-    }
 }
 
 fn read_length(stream: &mut TcpStream) -> u32 {

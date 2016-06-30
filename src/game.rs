@@ -4,17 +4,11 @@ use std::f32;
 use rand::{OsRng, Rng};
 
 use kiss3d::window::Window;
-use kiss3d::light::Light;
 use kiss3d::scene::SceneNode;
-use kiss3d::camera::{ Camera, FirstPerson };
 
-use nalgebra::{ Vector3, Rotation, Isometry3, Point3 };
+use nalgebra::{ Vector3, Isometry3, Point3 };
 
 use num::traits::One;
-
-use rustc_serialize::{Encodable, Decodable};
-
-pub const NUM_PLAYERS: usize = 3;
 
 const CUBE_SIZE: f32 = 0.8;
 pub const ROWS: usize = 22;
@@ -22,14 +16,14 @@ pub const COLS: usize = 10;
 
 pub type Color = (f32, f32, f32);
 
-const EColor: Color = (0.0, 0.0, 0.0);
-const IColor: Color = (0.0, 1.0, 1.0);
-const JColor: Color = (1.0, 1.0, 0.0);
-const LColor: Color = (1.0, 0.647, 1.0);
-const OColor: Color = (0.0, 0.0, 1.0);
-const SColor: Color = (0.0, 1.0, 0.0);
-const TColor: Color = (1.0, 0.0, 0.0);
-const ZColor: Color = (0.5, 0.0, 0.5);
+const ECOLOR: Color = (0.0, 0.0, 0.0);
+const ICOLOR: Color = (0.0, 1.0, 1.0);
+const JCOLOR: Color = (1.0, 1.0, 0.0);
+const LCOLOR: Color = (1.0, 0.647, 1.0);
+const OCOLOR: Color = (0.0, 0.0, 1.0);
+const SCOLOR: Color = (0.0, 1.0, 0.0);
+const TCOLOR: Color = (1.0, 0.0, 0.0);
+const ZCOLOR: Color = (0.5, 0.0, 0.5);
 
 #[derive(Copy, Clone, PartialEq, RustcDecodable, RustcEncodable, Debug)]
 pub enum Cell {
@@ -38,39 +32,39 @@ pub enum Cell {
 
 fn tetro_color(s: Shape) -> Color {
     match s {
-        IShape => IColor,
-        JShape => JColor,
-        LShape => LColor,
-        OShape => OColor,
-        SShape => SColor,
-        TShape => TColor,
-        ZShape => ZColor,
-        _ => IColor,
+        ISHAPE => ICOLOR,
+        JSHAPE => JCOLOR,
+        LSHAPE => LCOLOR,
+        OSHAPE => OCOLOR,
+        SSHAPE => SCOLOR,
+        TSHAPE => TCOLOR,
+        ZSHAPE => ZCOLOR,
+        _ => ICOLOR,
     }
 }
 
 fn cell_color(p: Cell) -> Color {
     match p {
-        Cell::E => EColor,
-        Cell::I => IColor,
-        Cell::J => JColor,
-        Cell::L => LColor,
-        Cell::O => OColor,
-        Cell::S => SColor,
-        Cell::T => TColor,
-        Cell::Z => ZColor,
+        Cell::E => ECOLOR,
+        Cell::I => ICOLOR,
+        Cell::J => JCOLOR,
+        Cell::L => LCOLOR,
+        Cell::O => OCOLOR,
+        Cell::S => SCOLOR,
+        Cell::T => TCOLOR,
+        Cell::Z => ZCOLOR,
     }
 }
 
 fn cell_of_shape(s: Shape) -> Cell {
     match s {
-        IShape => Cell::I,
-        JShape => Cell::J,
-        LShape => Cell::L,
-        OShape => Cell::O,
-        SShape => Cell::S,
-        TShape => Cell::T,
-        ZShape => Cell::Z,
+        ISHAPE => Cell::I,
+        JSHAPE => Cell::J,
+        LSHAPE => Cell::L,
+        OSHAPE => Cell::O,
+        SSHAPE => Cell::S,
+        TSHAPE => Cell::T,
+        ZSHAPE => Cell::Z,
         _ => Cell::I,
     }
 }
@@ -78,7 +72,7 @@ fn cell_of_shape(s: Shape) -> Cell {
 
 pub type Shape = [[[u8; 4]; 4]; 4];
 
-pub const IShape: Shape = [
+pub const ISHAPE: Shape = [
     [[0, 1, 0, 0],
      [0, 1, 0, 0],
      [0, 1, 0, 0],
@@ -100,7 +94,7 @@ pub const IShape: Shape = [
      [0, 0, 0, 0]]
 ];
 
-const JShape: Shape = [
+const JSHAPE: Shape = [
     [[0, 1, 0, 0],
      [0, 1, 0, 0],
      [1, 1, 0, 0],
@@ -122,7 +116,7 @@ const JShape: Shape = [
      [0, 0, 0, 0]]
 ];
 
-const LShape: Shape = [
+const LSHAPE: Shape = [
     [[0, 1, 0, 0],
      [0, 1, 0, 0],
      [0, 1, 1, 0],
@@ -144,7 +138,7 @@ const LShape: Shape = [
      [0, 0, 0, 0]]
 ];
 
-const OShape: Shape = [
+const OSHAPE: Shape = [
     [[1, 1, 0, 0],
      [1, 1, 0, 0],
      [0, 0, 0, 0],
@@ -166,7 +160,7 @@ const OShape: Shape = [
      [0, 0, 0, 0]]
 ];
 
-const SShape: Shape = [
+const SSHAPE: Shape = [
     [[0, 1, 1, 0],
      [1, 1, 0, 0],
      [0, 0, 0, 0],
@@ -188,7 +182,7 @@ const SShape: Shape = [
      [0, 0, 0, 0]]
 ];
 
-const TShape: Shape = [
+const TSHAPE: Shape = [
     [[0, 1, 0, 0],
      [1, 1, 1, 0],
      [0, 0, 0, 0],
@@ -210,7 +204,7 @@ const TShape: Shape = [
      [0, 0, 0, 0]]
 ];
 
-const ZShape: Shape = [
+const ZSHAPE: Shape = [
     [[1, 1, 0, 0],
      [0, 1, 1, 0],
      [0, 0, 0, 0],
@@ -252,8 +246,8 @@ impl PlayerState {
     pub fn new(id: usize) -> PlayerState {
         PlayerState {
             board: [[Cell::E; COLS]; ROWS],
-            tetromino: (IShape, 0),
-            next_tetromino: (IShape, 0, TradeState::NoTrade),
+            tetromino: (ISHAPE, 0),
+            next_tetromino: (ISHAPE, 0, TradeState::NoTrade),
             tetro_pos: (ROWS as i8 - 3, COLS as i8 / 2 - 1),
             id: id,
         }
@@ -268,14 +262,14 @@ impl PlayerState {
         let mut rng = OsRng::new().unwrap();
         self.next_tetromino =
             match (rng.next_f32() * 7.0) as u8 {
-                0 => (IShape, 0, TradeState::NoTrade),
-                1 => (JShape, 0, TradeState::NoTrade),
-                2 => (LShape, 0, TradeState::NoTrade),
-                3 => (OShape, 0, TradeState::NoTrade),
-                4 => (SShape, 0, TradeState::NoTrade),
-                5 => (TShape, 0, TradeState::NoTrade),
-                6 => (ZShape, 0, TradeState::NoTrade),
-                _ => (IShape, 0, TradeState::NoTrade),
+                0 => (ISHAPE, 0, TradeState::NoTrade),
+                1 => (JSHAPE, 0, TradeState::NoTrade),
+                2 => (LSHAPE, 0, TradeState::NoTrade),
+                3 => (OSHAPE, 0, TradeState::NoTrade),
+                4 => (SSHAPE, 0, TradeState::NoTrade),
+                5 => (TSHAPE, 0, TradeState::NoTrade),
+                6 => (ZSHAPE, 0, TradeState::NoTrade),
+                _ => (ISHAPE, 0, TradeState::NoTrade),
             };
     }
 
@@ -329,7 +323,7 @@ impl PlayerState {
 
     fn clear_lines(&mut self) {
         let mut clear_line = true;
-        for mut i in 0..ROWS {
+        for i in 0..ROWS {
 	    clear_line = true;
 	    for j in 0..COLS {
 	        if self.board[ROWS - i - 1][j] == Cell::E {
@@ -415,13 +409,12 @@ pub struct Graphics {
 impl Graphics {
     pub fn new(window: &mut Window) -> Graphics {
         let mut bg = window.add_group();
-        let mut tg = bg.add_group();
-        let mut g = Graphics {
+        let tg = bg.add_group();
+        Graphics {
             orientation: Isometry3::one(),
             board_grp: bg,
             tetromino_grp: tg,
-        };
-        g
+        }
     }
 
     pub fn draw(&mut self, window: &mut Window,
@@ -439,28 +432,41 @@ impl Graphics {
     }
 
     fn draw_nexts(&mut self, player_states: &Vec<PlayerState>, my_id: isize) {
+        let trade_id = match player_states[my_id as usize].next_tetromino.2 {
+            TradeState::NoTrade => my_id as usize,
+            TradeState::Pending(o_id) => o_id,
+            TradeState::Confirm(o_id) => o_id,
+        };
+        
         let num_players = player_states.len() as isize;
         let span = cmp::min(3, num_players);
         for i in -(span / 2)..f32::ceil(span as f32 / 2.0) as isize {
             let id = (my_id + i + num_players) % num_players;
             let tetromino = player_states[id as usize].next_tetromino.clone();
+
+
             for r in 0..4 {
                 for c in 0..4 {
                     if tetromino.0[tetromino.1][r][c] != 0 {
                         let mut cube =
                             self.tetromino_grp.add_cube(CUBE_SIZE,
                                                         CUBE_SIZE, CUBE_SIZE);
-                        cube.prepend_to_local_translation(
-                            &Vector3::new((c as isize - 4 as isize -
-                                           (COLS / 2) as isize) as f32,
-                                          r as f32 +
-                                          i as f32 * 5.0,
-                                          -(COLS as f32 / 2.0 - 0.5) +
-                                          ((id as i8 - my_id as i8
-                                            + num_players as i8)
-                                           % num_players as i8) as f32));
+                        let (x, y, z) =
+                            ((c as isize - 4 as isize - (COLS / 2) as isize) as f32,
+                             r as f32 + i as f32 * 5.0,
+                             -(COLS as f32 / 2.0 - 0.5) +
+                             ((id as i8 - my_id as i8 + num_players as i8)
+                              % num_players as i8) as f32);
+                        cube.prepend_to_local_translation(&Vector3::new(x, y, z));
                         let color = tetro_color(tetromino.0);
                         cube.set_color(color.0, color.1, color.2);
+                        if trade_id as isize == id {
+                            let mut cube =
+                                self.tetromino_grp.add_cube(CUBE_SIZE,
+                                                            CUBE_SIZE, CUBE_SIZE);
+                            cube.prepend_to_local_translation(&Vector3::new(x, y, z + 1.0));
+                            cube.set_color(1.0, 1.0, 1.0);
+                        }
                     }
                 }
             }
@@ -526,7 +532,7 @@ impl Graphics {
     }
 
     pub fn draw_grid(&self, window: &mut Window) {
-        let mut wt = self.board_grp.data().world_transformation();
+        let wt = self.board_grp.data().world_transformation();
         for x in -(COLS as isize / 2)..(COLS as isize / 2 + 1) {
             for z in -(COLS as isize / 2)..(COLS as isize / 2 + 1) {
                 let p1 = Point3::new(x as f32, -(ROWS as f32 / 2.0), z as f32);

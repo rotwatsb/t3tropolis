@@ -1,12 +1,6 @@
-use std::net::{TcpListener, TcpStream};
-use std::io::{Write, Read};
-use std::str;
-use std::thread;
+use std::net::TcpStream;
 
 use networkadapter::*;
-
-use bincode::rustc_serialize::{encode, decode};
-use rustc_serialize::{Encodable, Decodable};
 
 use game::{PlayerState};
 

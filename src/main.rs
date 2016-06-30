@@ -62,8 +62,6 @@ fn main() {
     let mut mouse_press_pos: (f64, f64) = (0.0, 0.0);
     let mut rotate_board = false;
 
-    //let mut ticks = 0;
-    //let mut maybe_ps_to_swap: Option<PlayerState>  = None;
     let mut saved_shape: Option<Shape> = None;
 
     while window.render() {
@@ -82,24 +80,6 @@ fn main() {
 
         check_target_swap(&mut my_state, &mut states, &mut saved_shape);
 
-        /*
-        if let Some(player) = confirm_swap(&mut states, mp.id) {
-            maybe_ps_to_swap = Some(ps.clone());
-        }
-        if let Some(_) = maybe_ps_to_swap.clone() {
-            ticks += 1;
-        }
-        if ticks > 50 {
-            if let Some(ps) = maybe_ps_to_swap.clone() {
-                println!("performing swap");
-                my_state.next_tetromino.0 = ps.next_tetromino.0;
-                my_state.next_tetromino.1 = ps.next_tetromino.1;
-                my_state.next_tetromino.2 = mp.id;
-                maybe_ps_to_swap = None;
-            }
-            ticks = 0;
-        }
-         */
         graphics.draw_grid(&mut window);
         graphics.draw(&mut window, &states, mp.id);
 
