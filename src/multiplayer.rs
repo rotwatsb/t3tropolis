@@ -22,7 +22,6 @@ impl Mp {
         let mut stream_read = cnx.try_clone().unwrap();
         let recv_adapter = NetworkAdapter::new_incoming(&mut stream_read);
         let id: usize = recv_adapter.get_data();
-        println!("ID: {}", id);
         Mp {
             connection: cnx,
             id: id,

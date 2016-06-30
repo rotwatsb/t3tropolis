@@ -236,9 +236,16 @@ const ZShape: Shape = [
 pub struct PlayerState {
     pub board: [[Cell; COLS]; ROWS],
     pub tetromino: (Shape, usize),
-    pub next_tetromino: (Shape, usize, usize),
+    pub next_tetromino: (Shape, usize, TradeState),
     pub tetro_pos: (i8, i8),
     pub id: usize,
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug, Clone)]
+pub enum TradeState {
+    NoTrade,
+    Pending(usize),
+    Confirm(usize),
 }
 
 impl PlayerState {
@@ -246,7 +253,7 @@ impl PlayerState {
         PlayerState {
             board: [[Cell::E; COLS]; ROWS],
             tetromino: (IShape, 0),
-            next_tetromino: (IShape, 0, id),
+            next_tetromino: (IShape, 0, TradeState::NoTrade),
             tetro_pos: (ROWS as i8 - 3, COLS as i8 / 2 - 1),
             id: id,
         }
@@ -261,14 +268,14 @@ impl PlayerState {
         let mut rng = OsRng::new().unwrap();
         self.next_tetromino =
             match (rng.next_f32() * 7.0) as u8 {
-                0 => (IShape, 0, self.id),
-                1 => (JShape, 0, self.id),
-                2 => (LShape, 0, self.id),
-                3 => (OShape, 0, self.id),
-                4 => (SShape, 0, self.id),
-                5 => (TShape, 0, self.id),
-                6 => (ZShape, 0, self.id),
-                _ => (IShape, 0, self.id),
+                0 => (IShape, 0, TradeState::NoTrade),
+                1 => (JShape, 0, TradeState::NoTrade),
+                2 => (LShape, 0, TradeState::NoTrade),
+                3 => (OShape, 0, TradeState::NoTrade),
+                4 => (SShape, 0, TradeState::NoTrade),
+                5 => (TShape, 0, TradeState::NoTrade),
+                6 => (ZShape, 0, TradeState::NoTrade),
+                _ => (IShape, 0, TradeState::NoTrade),
             };
     }
 
@@ -278,8 +285,21 @@ impl PlayerState {
         self.select_next_shape();
     }
 
-    pub fn signal_swap(&mut self, d: isize, n: isize) {
-        self.next_tetromino.2 = ((self.id as isize + d + n) % n) as usize;
+    pub fn toggle_swap(&mut self, d: isize, n: isize) {
+        let target: usize = ((self.id as isize + d + n) % n) as usize;
+        match self.next_tetromino.2 {
+            TradeState::NoTrade =>
+                self.next_tetromino.2 = TradeState::Pending(target),
+            TradeState::Pending(id) => {
+                if id == target {
+                    self.next_tetromino.2 = TradeState::NoTrade;
+                }
+                else {
+                    self.next_tetromino.2 = TradeState::Pending(target);
+                }
+            },
+            TradeState::Confirm(_) => (),            
+        }
     }
 
     pub fn rotate_tetromino(&mut self) {
@@ -305,7 +325,6 @@ impl PlayerState {
         while !self.collision(-1, 0) {//&& self.tetro_pos.0 > 0 {
             self.tetro_pos.0 -= 1;
         }
-        println!("tetro pos: {:?}", self.tetro_pos);
     }
 
     fn clear_lines(&mut self) {
@@ -411,7 +430,7 @@ impl Graphics {
         self.tetromino_grp.unlink();
         self.board_grp = window.add_group();
         self.tetromino_grp = self.board_grp.add_group();
-        self.board_grp.prepend_to_local_translation(&Vector3::new(0.0, 2.0, 32.0));
+        self.board_grp.prepend_to_local_translation(&Vector3::new(0.0, 0.0, 31.0));
         self.board_grp.prepend_to_local_transformation(&self.orientation);
 
         self.draw_boards(player_states, my_id);
@@ -424,7 +443,7 @@ impl Graphics {
         let span = cmp::min(3, num_players);
         for i in -(span / 2)..f32::ceil(span as f32 / 2.0) as isize {
             let id = (my_id + i + num_players) % num_players;
-            let tetromino = player_states[id as usize].next_tetromino;
+            let tetromino = player_states[id as usize].next_tetromino.clone();
             for r in 0..4 {
                 for c in 0..4 {
                     if tetromino.0[tetromino.1][r][c] != 0 {

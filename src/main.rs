@@ -10,7 +10,7 @@ mod game;
 mod multiplayer;
 mod networkadapter;
 
-use game::{PlayerState, Graphics};
+use game::{PlayerState, TradeState, Shape, Graphics};
 use multiplayer::Mp;
 use networkadapter::*;
 
@@ -62,8 +62,9 @@ fn main() {
     let mut mouse_press_pos: (f64, f64) = (0.0, 0.0);
     let mut rotate_board = false;
 
-    let mut ticks = 0;
-    let mut maybe_ps_to_swap: Option<PlayerState>  = None;
+    //let mut ticks = 0;
+    //let mut maybe_ps_to_swap: Option<PlayerState>  = None;
+    let mut saved_shape: Option<Shape> = None;
 
     while window.render() {
 
@@ -79,15 +80,15 @@ fn main() {
             else { states.push(my_state.clone()); }
         }
 
-        if let Some(ps) = swap_if_confirmed(&mut states, mp.id) {
+        check_target_swap(&mut my_state, &mut states, &mut saved_shape);
+
+        /*
+        if let Some(player) = confirm_swap(&mut states, mp.id) {
             maybe_ps_to_swap = Some(ps.clone());
-            println!("SAVED PLAYER {} STATE", ps.id);
         }
         if let Some(_) = maybe_ps_to_swap.clone() {
             ticks += 1;
-            println!("tick (in): {}", ticks);
         }
-        println!("tick (out): {}", ticks);
         if ticks > 50 {
             if let Some(ps) = maybe_ps_to_swap.clone() {
                 println!("performing swap");
@@ -98,7 +99,7 @@ fn main() {
             }
             ticks = 0;
         }
-
+         */
         graphics.draw_grid(&mut window);
         graphics.draw(&mut window, &states, mp.id);
 
@@ -117,9 +118,9 @@ fn main() {
                         Key::Space =>
                             my_state.drop(),
                         Key::E =>
-                            my_state.signal_swap(-1 as isize, num_peers as isize),
+                            my_state.toggle_swap(-1 as isize, num_peers as isize),
                         Key::C =>
-                            my_state.signal_swap(1 as isize, num_peers as isize),
+                            my_state.toggle_swap(1 as isize, num_peers as isize),
                         _ => (),
                     }
                     mp.issue_update(my_state.clone());
@@ -160,14 +161,53 @@ fn main() {
     }
 }
 
-fn swap_if_confirmed(states: &mut Vec<PlayerState>, my_id: usize) -> Option<PlayerState> {
-    let my_ps: &PlayerState = &states[my_id].clone();
-    if my_ps.next_tetromino.2 == my_id { return None; }
-    let o_ps: &PlayerState = &states[my_ps.next_tetromino.2].clone();
-    if o_ps.next_tetromino.2 == my_id {
-        Some(o_ps.clone())
+fn check_target_swap(my_state: &mut PlayerState, states: &mut Vec<PlayerState>,
+                     saved_shape: &mut Option<Shape>) {
+    match my_state.next_tetromino.2.clone() {
+        TradeState::NoTrade => (),
+        TradeState::Pending(target) =>
+        {
+            *saved_shape = Some(states[target].next_tetromino.0);
+            match states[target].next_tetromino.2.clone() {
+                TradeState::NoTrade => (),
+                TradeState::Pending(id) => {
+                    if id == my_state.id {
+                        my_state.next_tetromino.2 = TradeState::Confirm(target);
+                    }
+                },
+                TradeState::Confirm(id) => {
+                    if id == my_state.id {
+                        my_state.next_tetromino.2 = TradeState::Confirm(target);
+                    }
+                    else {
+                        my_state.next_tetromino.2 = TradeState::NoTrade;
+                    }
+                },
+            }
+        },
+        TradeState::Confirm(target) =>
+        {
+            match states[target].next_tetromino.2.clone() {
+                TradeState::NoTrade => make_trade(my_state, saved_shape),
+                TradeState::Pending(id) => {
+                    if id != my_state.id {
+                        *saved_shape = None;
+                        my_state.next_tetromino.2 = TradeState::NoTrade;
+                    }
+                },
+                TradeState::Confirm(id) => make_trade(my_state, saved_shape),
+            }
+        },
     }
-    else { None }
+}
+
+fn make_trade(my_state: &mut PlayerState, saved_shape: &mut Option<Shape>) {
+    if let &mut Some(shape) = saved_shape {
+        my_state.next_tetromino.0 = shape;
+        my_state.next_tetromino.1 = 0;
+        my_state.next_tetromino.2 = TradeState::NoTrade;
+    }
+    *saved_shape = None;
 }
 
 

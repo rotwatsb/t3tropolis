@@ -117,17 +117,14 @@ pub fn create_server(host_port: String) {
             let event = rx.recv().unwrap();
             match event {
                 NetworkEvent::NewConnection(id, stream) => {
-                    println!("Connection from stream #{}", id);
                     conns.push(stream);
                     let adapter = NetworkAdapter::new_outgoing(id);
                     conns[id].write(adapter.data.as_slice());
                 },
                 NetworkEvent::NewMessage(id, data) => {
-                    println!("New message from id {}", id);
                     let adapter = NetworkAdapter::new_outgoing(data);
                     for (idx, ref mut conn) in conns.iter_mut().enumerate() {
                         if id != idx {
-                            println!("Sending back to conns");
                             conn.write_all(adapter.data.as_slice());
                         }
                     }
