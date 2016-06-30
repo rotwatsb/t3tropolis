@@ -98,9 +98,9 @@ fn main() {
                         Key::Space =>
                             my_state.drop(),
                         Key::E =>
-                            my_state.toggle_swap(-1 as isize, num_peers as isize),
-                        Key::C =>
                             my_state.toggle_swap(1 as isize, num_peers as isize),
+                        Key::C =>
+                            my_state.toggle_swap(-1 as isize, num_peers as isize),
                         _ => (),
                     }
                     mp.issue_update(my_state.clone());
