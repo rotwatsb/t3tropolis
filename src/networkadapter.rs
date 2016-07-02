@@ -10,7 +10,7 @@ use bincode::SizeLimit;
 use bincode::rustc_serialize::{encode, decode};
 use rustc_serialize::{Encodable, Decodable};
 
-use game::PlayerState;
+use playerstate::PlayerState;
 
 #[derive(Debug)]
 pub struct NetworkAdapter<T> 
@@ -31,7 +31,7 @@ impl<T> NetworkAdapter<T>
         let read_length = (length as usize) - 4;
         let mut data: Vec<u8> = vec![0; read_length];
         stream.read_exact(&mut data.as_mut_slice()).unwrap();
-           NetworkAdapter {
+        NetworkAdapter {
             length: length,
             data: data,
             phantom: PhantomData::<T>
@@ -72,9 +72,7 @@ enum NetworkEvent {
 fn handle_stream(mut stream: TcpStream, id: usize, tx: Sender<NetworkEvent>) {
     thread::spawn(move|| {
         loop {
-            let recv_adapter = 
-                NetworkAdapter::new_incoming(&mut stream);
-
+            let recv_adapter = NetworkAdapter::new_incoming(&mut stream);
             let data: PlayerState = recv_adapter.get_data();
             tx.send(NetworkEvent::NewMessage(id, data));
         }
@@ -83,8 +81,7 @@ fn handle_stream(mut stream: TcpStream, id: usize, tx: Sender<NetworkEvent>) {
 
 
 pub fn create_server(host_port: String) {
-    let (tx, rx): (Sender<NetworkEvent>, Receiver<NetworkEvent>) =
-                   mpsc::channel();
+    let (tx, rx): (Sender<NetworkEvent>, Receiver<NetworkEvent>) = mpsc::channel();
     let addr: String = "0.0.0.0:".to_string() + &host_port;
     println!("Creating a servers at {}", addr);
     let listener = TcpListener::bind(&addr as &str).unwrap();
@@ -93,10 +90,11 @@ pub fn create_server(host_port: String) {
         let mut id = 0;
         for stream in listener.incoming() {
             match stream {
-                Ok(mut stream) => {
+                Ok(stream) => {
                     let tx = tx.clone();
                     tx.send(
-                        NetworkEvent::NewConnection(id, stream.try_clone().unwrap()));
+                        NetworkEvent::NewConnection(
+                            id, stream.try_clone().unwrap()));
                     handle_stream(stream, id, tx);
                     id += 1;
                 },
@@ -108,7 +106,7 @@ pub fn create_server(host_port: String) {
     thread::spawn(move|| {
         let mut conns: Vec<TcpStream> = vec![];
         loop {
-            // handle sending ppto all streams
+            // handle sending pp to all streams
             let event = rx.recv().unwrap();
             match event {
                 NetworkEvent::NewConnection(id, stream) => {
@@ -133,7 +131,7 @@ pub fn connect_to_server() -> io::Result<TcpStream> {
     print!("Connect to: ");
     let addr = &get_input();
     println!("Connecting to server {}!", addr);
-    let mut stream = try!(TcpStream::connect(&addr as &str));
+    let stream = try!(TcpStream::connect(&addr as &str));
     Ok(stream)
 }
 
@@ -167,7 +165,3 @@ fn get_input() -> String {
     let _ = stdin().read_line(&mut input);
     input.trim().to_string()
 }
-
-
-
-

@@ -5,12 +5,16 @@ extern crate rand;
 extern crate num;
 extern crate rustc_serialize;
 extern crate bincode;
+extern crate gl;
 
-mod game;
+mod playerstate;
+mod draw;
 mod multiplayer;
 mod networkadapter;
+mod other_material;
 
-use game::{PlayerState, TradeState, Shape, Graphics};
+use playerstate::{PlayerState, TradeState, Shape};
+use draw::Draw;
 use multiplayer::Mp;
 use networkadapter::*;
 
@@ -21,7 +25,7 @@ use nalgebra::{Vector3, Rotation};
 
 use glfw::{Action, WindowEvent, Key};
 
-use std::time::{Duration, SystemTime};
+use std::time::{SystemTime};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -29,7 +33,7 @@ fn main() {
 
     let mut mp: Mp = Mp::new();
 
-    let mut peer_states: Arc<Mutex<Vec<PlayerState>>> =
+    let peer_states: Arc<Mutex<Vec<PlayerState>>> =
         Arc::new(Mutex::new(vec![PlayerState::new(0); mp.id + 1]));
     
     let mut my_state: PlayerState = PlayerState::new(mp.id);
@@ -37,7 +41,7 @@ fn main() {
     let mut window = Window::new("T3tropolis");
     window.set_light(Light::StickToCamera);
 
-    let mut graphics = Graphics::new(&mut window);
+    let mut drawer = Draw::new(&mut window);
     my_state.begin();
 
     let mut stream_read = mp.connection.try_clone().unwrap();
@@ -69,7 +73,7 @@ fn main() {
         let mut states: Vec<PlayerState> = Vec::new();
 
         let data = peer_states.clone();
-        let mut ps_vec = data.lock().unwrap();
+        let ps_vec = data.lock().unwrap();
         let num_peers = (*ps_vec).len();
         for i in 0..(*ps_vec).len() {
             if i != mp.id {
@@ -80,8 +84,7 @@ fn main() {
 
         check_target_swap(&mut my_state, &mut states, &mut saved_shape);
 
-        graphics.draw_grid(&mut window);
-        graphics.draw(&mut window, &states, mp.id);
+        drawer.draw(&mut window, &states, mp.id);
 
         for mut event in window.events().iter() {
             match event.value {
@@ -107,19 +110,19 @@ fn main() {
 
                     event.inhibited = true // override the default keyboard handler
                 },
-                WindowEvent::MouseButton(_, Action::Press, mods) => {
+                WindowEvent::MouseButton(_, Action::Press, _) => {
                     rotate_board = true;
                     mouse_press_pos = mouse_pos;
                     event.inhibited = true // override the default mouse handler
                 },
-                WindowEvent::MouseButton(_, Action::Release, mods) => {
+                WindowEvent::MouseButton(_, Action::Release, _) => {
                     rotate_board = false;
                     event.inhibited = true // override the default mouse handler
                 },
                 WindowEvent::CursorPos(x, y) => {
                     mouse_pos = (x, y);
                     if rotate_board {
-                        graphics.orientation.prepend_rotation_mut(
+                        drawer.orientation.prepend_rotation_mut(
                             &Vector3::new(0.0, ((mouse_pos.1 - mouse_press_pos.1) /
                                                 1000.0) as f32,
                                           0.0));
@@ -175,7 +178,14 @@ fn check_target_swap(my_state: &mut PlayerState, states: &mut Vec<PlayerState>,
                         my_state.next_tetromino.2 = TradeState::NoTrade;
                     }
                 },
-                TradeState::Confirm(id) => make_trade(my_state, saved_shape),
+                TradeState::Confirm(id) => {
+                    if id == my_state.id {
+                        make_trade(my_state, saved_shape);
+                    }
+                    else {
+                        my_state.next_tetromino.2 = TradeState::NoTrade;
+                    }
+                },
             }
         },
     }
@@ -189,9 +199,3 @@ fn make_trade(my_state: &mut PlayerState, saved_shape: &mut Option<Shape>) {
     }
     *saved_shape = None;
 }
-
-
-
-
-
- 
