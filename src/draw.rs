@@ -2,12 +2,15 @@ use std::cmp;
 use std::f32;
 use std::rc::Rc;
 use std::cell::{Ref, RefMut, RefCell};
+use std::path::Path;
 
 use kiss3d::window::Window;
 use kiss3d::scene::SceneNode;
 use kiss3d::resource::material::Matrixerial;
+use kiss3d::text::Font;
 
-use nalgebra::{Vector3, Isometry3, Point3};
+use nalgebra::{Vector3, Isometry3, Point2, Point3};
+use nalgebra;
 
 use num::traits::One;
 
@@ -79,7 +82,7 @@ impl Draw {
     }
 
     pub fn draw(&mut self, window: &mut Window,
-            player_states: &Vec<PlayerState>, my_id: usize) {
+            player_states: &Vec<PlayerState>, my_id: usize, score: u32) {
         self.board_grp.unlink();
         self.tetromino_grp.unlink();
         self.board_grp = window.add_group();
@@ -91,6 +94,13 @@ impl Draw {
         self.draw_boards(player_states, my_id);
         self.draw_tetrominos(player_states, my_id);
         self.draw_nexts(player_states, my_id as isize);
+        self.draw_score(window, score);
+    }
+
+    fn draw_score(&self, window: &mut Window, score: u32) {
+        let font = Font::new(&Path::new("./src/FreeSans.ttf"), 60);
+        window.draw_text(&score.to_string(), &Point2::new(0.0, 80.0),
+                         &font, &Point3::new(0.0, 0.0, 1.0));
     }
 
     fn draw_nexts(&mut self, player_states: &Vec<PlayerState>, my_id: isize) {

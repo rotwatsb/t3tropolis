@@ -13,7 +13,7 @@ mod multiplayer;
 mod networkadapter;
 mod other_material;
 
-use playerstate::{PlayerState, TradeState, Shape};
+use playerstate::{PlayerState, TradeState, BoardState, Shape};
 use draw::Draw;
 use multiplayer::Mp;
 use networkadapter::*;
@@ -35,6 +35,8 @@ fn main() {
 
     let peer_states: Arc<Mutex<Vec<PlayerState>>> =
         Arc::new(Mutex::new(vec![PlayerState::new(0); mp.id + 1]));
+    
+    let mut preserved_states: Vec<PlayerState> = Vec::new();
     
     let mut my_state: PlayerState = PlayerState::new(mp.id);
 
@@ -67,9 +69,10 @@ fn main() {
     let mut rotate_board = false;
 
     let mut saved_shape: Option<Shape> = None;
+    let mut last_score: u32 = 0;
 
     while window.render() {
-
+        
         let mut states: Vec<PlayerState> = Vec::new();
 
         let data = peer_states.clone();
@@ -84,7 +87,10 @@ fn main() {
 
         check_target_swap(&mut my_state, &mut states, &mut saved_shape);
 
-        drawer.draw(&mut window, &states, mp.id);
+        let score = check_rot(&mut my_state, &mut states,
+                              &mut preserved_states, &mut last_score);
+
+        drawer.draw(&mut window, &states, mp.id, score);
 
         for mut event in window.events().iter() {
             match event.value {
@@ -98,6 +104,8 @@ fn main() {
                             my_state.move_left(),
                         Key::D | Key::Right =>
                             my_state.move_right(),
+                        Key::P =>
+                            my_state.paused = !my_state.paused,
                         Key::Space =>
                             my_state.drop(),
                         Key::E =>
@@ -140,7 +148,6 @@ fn main() {
                 mp.issue_update(my_state.clone());
             }
         }
-
     }
 }
 
@@ -198,4 +205,35 @@ fn make_trade(my_state: &mut PlayerState, saved_shape: &mut Option<Shape>) {
         my_state.next_tetromino.2 = TradeState::NoTrade;
     }
     *saved_shape = None;
+}
+
+fn check_rot(my_state: &mut PlayerState, cur_states: &mut Vec<PlayerState>,
+             preserved_states: &mut Vec<PlayerState>, last_score: &mut u32) -> u32 {
+
+    let score = cur_states.iter().fold(0, |acc, &ref x| acc + x.score);
+    
+    match my_state.board_state.clone() {
+        BoardState::Stable => {
+            if score - *last_score >= 100 {
+                *last_score = score;
+                my_state.paused = true;
+                my_state.board_state = BoardState::Ready;
+            }
+        },
+        BoardState::Ready => {
+            if cur_states.iter().all(|&ref x| x.board_state != BoardState::Stable) {
+                *preserved_states = cur_states.clone();
+                my_state.board_state = BoardState::Confirm;
+            }
+        },
+        BoardState::Confirm => {
+            if cur_states.iter().all(|&ref x| x.board_state != BoardState::Ready) {
+                my_state.rotate_board(preserved_states);
+                my_state.board_state = BoardState::Stable;
+                my_state.new_tetromino();
+                my_state.paused = false;
+            }
+        },
+    }
+    score
 }
