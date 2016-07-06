@@ -70,7 +70,7 @@ fn main() {
 
     let mut saved_shape: Option<Shape> = None;
     let mut last_score: u32 = 0;
-
+    
     while window.render() {
         
         let mut states: Vec<PlayerState> = Vec::new();
@@ -88,7 +88,8 @@ fn main() {
         check_target_swap(&mut my_state, &mut states, &mut saved_shape);
 
         let score = check_rot(&mut my_state, &mut states,
-                              &mut preserved_states, &mut last_score);
+                              &mut preserved_states, &mut last_score,
+                              &mut drawer, &mut window);
 
         drawer.draw(&mut window, &states, mp.id, score);
 
@@ -106,6 +107,12 @@ fn main() {
                             my_state.move_right(),
                         Key::P =>
                             my_state.paused = !my_state.paused,
+                        Key::F => {
+                            drawer.anim_rot(std::f32::consts::PI / 8.0, 10);
+                        },                            
+                        Key::CapsLock => {
+                            drawer.anim_rot(std::f32::consts::PI / -8.0, 10);
+                        },
                         Key::Space =>
                             my_state.drop(),
                         Key::E =>
@@ -208,13 +215,14 @@ fn make_trade(my_state: &mut PlayerState, saved_shape: &mut Option<Shape>) {
 }
 
 fn check_rot(my_state: &mut PlayerState, cur_states: &mut Vec<PlayerState>,
-             preserved_states: &mut Vec<PlayerState>, last_score: &mut u32) -> u32 {
+             preserved_states: &mut Vec<PlayerState>, last_score: &mut u32,
+             drawer: &mut Draw, window: &mut Window) -> u32 {
 
     let score = cur_states.iter().fold(0, |acc, &ref x| acc + x.score);
     
     match my_state.board_state.clone() {
         BoardState::Stable => {
-            if score - *last_score >= 100 {
+            if score - *last_score >= 50 * (cur_states.len() as u32) {
                 *last_score = score;
                 my_state.paused = true;
                 my_state.board_state = BoardState::Ready;
@@ -228,9 +236,17 @@ fn check_rot(my_state: &mut PlayerState, cur_states: &mut Vec<PlayerState>,
         },
         BoardState::Confirm => {
             if cur_states.iter().all(|&ref x| x.board_state != BoardState::Ready) {
+                drawer.anim_rot(std::f32::consts::PI / 2.0, 30);
+                while drawer.animating() {
+                    println!("DRAWING!");
+                    window.render();
+                    drawer.draw(window, preserved_states, my_state.id, score);
+                }
                 my_state.rotate_board(preserved_states);
                 my_state.board_state = BoardState::Stable;
                 my_state.new_tetromino();
+                drawer.orientation.prepend_rotation_mut(
+                    &Vector3::new(0.0, std::f32::consts::PI / -2.0, 0.0));
                 my_state.paused = false;
             }
         },

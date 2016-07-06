@@ -9,14 +9,14 @@ use kiss3d::scene::SceneNode;
 use kiss3d::resource::material::Matrixerial;
 use kiss3d::text::Font;
 
-use nalgebra::{Vector3, Isometry3, Point2, Point3};
+use nalgebra::{Vector3, Isometry3, Point2, Point3, Rotation};
 
 use num::traits::One;
 
 use playerstate::{PlayerState, Shape, ISHAPE, JSHAPE, LSHAPE, OSHAPE,
                   SSHAPE, TSHAPE, ZSHAPE, Cell, ROWS, COLS, TradeState};
 
-use other_material::{MyObjectMatrixerial};
+use other_material::MyObjectMatrixerial;
 
 const CUBE_SIZE: f32 = 0.8;
 
@@ -63,6 +63,9 @@ pub struct Draw {
     pub tetromino_grp: SceneNode,
     pub translucent_mat: Rc<RefCell<Box<Matrixerial>>>,
     pub opaque_mat: Rc<RefCell<Box<Matrixerial>>>,
+    anim_frames: u32,
+    anim_frame_count: u32,
+    anim_rot_vec: Vector3<f32>,
 }
 
 impl Draw {
@@ -77,11 +80,18 @@ impl Draw {
                 MyObjectMatrixerial::new(true)))),
             opaque_mat: Rc::new(RefCell::new(Box::new(
                 MyObjectMatrixerial::new(false)))),
+            anim_frames: 0,
+            anim_frame_count: 0,
+            anim_rot_vec: Vector3::new(0.0, 0.0, 0.0),
         }
     }
 
+    pub fn animating(&self) -> bool {
+        self.anim_frame_count > 0
+    }
+
     pub fn draw(&mut self, window: &mut Window,
-            player_states: &Vec<PlayerState>, my_id: usize, score: u32) {
+                player_states: &Vec<PlayerState>, my_id: usize, score: u32) {
         self.board_grp.unlink();
         self.tetromino_grp.unlink();
         self.board_grp = window.add_group();
@@ -89,11 +99,22 @@ impl Draw {
         self.board_grp.prepend_to_local_translation(&Vector3::new(0.0, 0.0, 31.0));
         self.board_grp.prepend_to_local_transformation(&self.orientation);
 
+        if self.anim_frame_count > 0 {
+            self.anim_frame_count -= 1;
+            self.orientation.prepend_rotation_mut(&self.anim_rot_vec);
+        }
+
         self.draw_grid(window);
         self.draw_boards(player_states, my_id);
         self.draw_tetrominos(player_states, my_id);
         self.draw_nexts(player_states, my_id as isize);
         self.draw_score(window, score);
+    }
+
+    pub fn anim_rot(&mut self, rot_angle: f32, frames: u32) {
+        self.anim_rot_vec.y = rot_angle / (frames as f32);
+        self.anim_frames = frames;
+        self.anim_frame_count = self.anim_frames;
     }
 
     fn draw_score(&self, window: &mut Window, score: u32) {
