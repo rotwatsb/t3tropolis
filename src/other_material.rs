@@ -11,9 +11,8 @@ use kiss3d::resource::{Mesh, Shader, ShaderAttribute, ShaderUniform};
 
 macro_rules! verify(
     ($e: expr) => {
-        let res = $e;
+        $e;
         assert_eq!(gl::GetError(), 0);
-        res
     }
 );
 
