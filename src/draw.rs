@@ -1,7 +1,7 @@
 use std::cmp;
 use std::f32;
 use std::rc::Rc;
-use std::cell::{Ref, RefMut, RefCell};
+use std::cell::{RefCell};
 use std::path::Path;
 
 use kiss3d::window::Window;
@@ -10,7 +10,6 @@ use kiss3d::resource::material::Matrixerial;
 use kiss3d::text::Font;
 
 use nalgebra::{Vector3, Isometry3, Point2, Point3};
-use nalgebra;
 
 use num::traits::One;
 
@@ -126,7 +125,7 @@ impl Draw {
                             self.tetromino_grp.add_cube(CUBE_SIZE,
                                                         CUBE_SIZE,
                                                         CUBE_SIZE);
-                        let (mut x, mut y) =
+                        let (mut x, y) =
                             ((c as isize - 4 as isize - (COLS / 2) as isize) as f32,
                              r as f32 + i as f32 * 5.0);
                         
