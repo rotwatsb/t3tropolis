@@ -222,6 +222,16 @@ impl PlayerState {
         self.new_tetromino();
     }
 
+    fn reset(&mut self) {
+        for r in 0..ROWS {
+            for c in 0..COLS {
+                self.board[r][c] = Cell::E;
+                self.score = 0;
+                self.begin();
+            }
+        }
+    }
+
     fn select_next_shape(&mut self) {
         let mut rng = OsRng::new().unwrap();
         self.next_tetromino =
@@ -339,14 +349,19 @@ impl PlayerState {
 	    }
         }
     }
-    
+
     fn tetro_to_board(&mut self) {
         for i in 0..4 {
 	    for j in 0..4 {
 	        if self.tetromino.0[self.tetromino.1][i][j] != 0 {
-		    self.board[(i as i8 + self.tetro_pos.0) as usize]
-                        [(j as i8 + self.tetro_pos.1) as usize] =
-                        cell_of_shape(self.tetromino.0);
+                    let (r, c) = ((i as i8 + self.tetro_pos.0) as usize,
+                                  (j as i8 + self.tetro_pos.1) as usize);
+                    if r < ROWS - 2 && self.board[r][c] == Cell::E {
+		        self.board[r][c] = cell_of_shape(self.tetromino.0);
+                    }
+                    else {
+                        self.reset();
+                    }
 	        }
             }
         }

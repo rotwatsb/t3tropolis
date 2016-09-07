@@ -236,9 +236,8 @@ fn check_rot(my_state: &mut PlayerState, cur_states: &mut Vec<PlayerState>,
         },
         BoardState::Confirm => {
             if cur_states.iter().all(|&ref x| x.board_state != BoardState::Ready) {
-                drawer.anim_rot(std::f32::consts::PI / 2.0, 30);
+                drawer.anim_rot(-(std::f32::consts::PI / 2.0), 30);
                 while drawer.animating() {
-                    println!("DRAWING!");
                     window.render();
                     drawer.draw(window, preserved_states, my_state.id, score);
                 }
@@ -246,7 +245,7 @@ fn check_rot(my_state: &mut PlayerState, cur_states: &mut Vec<PlayerState>,
                 my_state.board_state = BoardState::Stable;
                 my_state.new_tetromino();
                 drawer.orientation.prepend_rotation_mut(
-                    &Vector3::new(0.0, std::f32::consts::PI / -2.0, 0.0));
+                    &Vector3::new(0.0, std::f32::consts::PI / 2.0, 0.0));
                 my_state.paused = false;
             }
         },

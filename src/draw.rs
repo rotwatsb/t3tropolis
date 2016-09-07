@@ -182,7 +182,7 @@ impl Draw {
         let num_players = player_states.len();
 
         for ps in player_states {
-            for r in 0..ROWS {
+            for r in 0..ROWS - 2 {
                 for c in 0..COLS {
                     if ps.board[r][c] != Cell::E {
                         let mut cube =
@@ -248,14 +248,14 @@ impl Draw {
             for z in -(COLS as isize / 2)..(COLS as isize / 2 + 1) {
                 let p1 = Point3::new(x as f32, -(ROWS as f32 / 2.0), z as f32);
                 let _p1 = wt * p1;
-                let p2 = Point3::new(x as f32, (ROWS as f32 / 2.0), z as f32);
+                let p2 = Point3::new(x as f32, (ROWS as f32 / 2.0) - 2.0, z as f32);
                 let _p2 = wt * p2;
                 let c = Point3::new(0.5 as f32, 0.5 as f32, 0.5 as f32);
                 window.draw_line(&_p1, &_p2, &c);
             }
         }
         
-        for y in -(ROWS as isize / 2)..(ROWS as isize / 2) {
+        for y in -(ROWS as isize / 2)..((ROWS - 2) as isize / 2) {
             for x in -(COLS as isize / 2)..(COLS as isize / 2 + 1) {
                 let p1 = Point3::new(x as f32, y as f32, -(COLS as f32 / 2.0));
                 let _p1 = wt * p1;
